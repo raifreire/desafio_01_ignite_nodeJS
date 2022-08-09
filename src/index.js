@@ -11,7 +11,6 @@ app.use(express.json());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-
   const { username } = request.headers;
 
   const user = users.find((user) => user.username === username);
@@ -23,27 +22,28 @@ function checksExistsUserAccount(request, response, next) {
   request.user = user;
 
   return next();
-}
+};
 
 app.post("/users", (request, response) => {
-  const { username, name } = request.body;
+  const { name, username } = request.body;
 
-  const userExists = users.some((user) => user.username === username);
+  const userExists = users.find((user) => user.username === username);
 
   if (userExists) {
     return response.status(400).json({ error: "data alreadey exists in database" })
   }
 
-  users.push({
-    username,
-    name,
+  const user = ({
     id: uuidv4(),
+    name,
+    username,
     todos: []
   });
 
-  return response.status(201).send("insert user in data base");
-});
+  users.push(user);
 
+  return response.status(201).json(user);
+});
 
 app.get("/todos", checksExistsUserAccount, (request, response) => {
   const { user } = request;
@@ -51,12 +51,8 @@ app.get("/todos", checksExistsUserAccount, (request, response) => {
   return response.json(user.todos);
 });
 
-
-
 app.post("/todos", checksExistsUserAccount, (request, response) => {
-
   const { title, deadline } = request.body;
-
   const { user } = request;
 
   const sendtodo = {
@@ -72,43 +68,50 @@ app.post("/todos", checksExistsUserAccount, (request, response) => {
   return response.status(201).json(sendtodo);
 });
 
-
-
 app.put("/todos/:id", checksExistsUserAccount, (request, response) => {
-
   const { title, deadline } = request.body;
-  const { id } = request.params;
   const { user } = request;
+  const { id } = request.params;
 
-  const index = user.todos.findIndex((user) => user.id === id);
+  const todo = user.todos.find((todo) => todo.id === id);
 
-  user.todos[index].title = title;
-  user.todos[index].deadline = deadline;
+  if (!todo) {
+    return response.status(404).json({ error: "not found" });
+  }
 
-  return response.json(user.todos[index]);
+  todo.title = title;
+  todo.deadline = new Date(deadline);
 
+  return response.json(todo);
+
+  //const index = user.todos.findIndex((user) => user.id === id);
+  //user.todos[index].title = title;
+  //user.todos[index].deadline = deadline;
 });
 
 
 app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-
   const { id } = request.params;
   const { user } = request;
 
-  const index = user.todos.findIndex((user) => user.id === id);
+  const todo = user.todos.find((todo) => todo.id === id);
 
-  if (index === -1) {
-    return response.status(404).json({ error: "todo not exists" });
-  };
+  if (!todo) {
+    return response.status(404).json({ error: "not found" });
+  }
 
-  user.todos[index].done = true;
+  todo.done = true;
 
-  return response.json(user.todos);
+  return response.json(todo);
+  // const index = user.todos.findIndex((user) => user.id === id);
+  // if (index === -1) {
+  //   return response.status(404).json({ error: "todo not exists" });
+  // };
+  // user.todos[index].done = true;
 });
 
 
 app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
   const { id } = request.params;
   const { user } = request;
 
@@ -122,7 +125,5 @@ app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
 
   return response.status(204).json();
 });
-
-
 
 module.exports = app;
